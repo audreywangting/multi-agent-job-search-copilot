@@ -1,0 +1,37 @@
+Analyze the resume against the job description.
+
+Return only valid JSON with this exact shape:
+{
+  "match_score": 0,
+  "recommendation": "Strong Apply",
+  "matched_skills": [],
+  "partial_matches": [],
+  "missing_skills": [],
+  "resume_improvements": [],
+  "reasoning_summary": ""
+}
+
+Scoring guidance:
+- 90-100: excellent fit with clear evidence for most important requirements.
+- 75-89: strong fit with a few gaps.
+- 55-74: possible fit with meaningful gaps.
+- 35-54: weak fit.
+- 0-34: poor fit.
+
+Recommendation guidance:
+- Strong Apply: score 75 or above.
+- Apply: score 55-74.
+- Low Priority: score 35-54.
+- Skip: score below 35.
+
+Rules:
+- Do not invent experience that is not supported by the resume.
+- Keep the reasoning summary short.
+- Keep lists concise and practical.
+- Suggested resume improvements should be actionable edits the candidate could make if true.
+
+Resume:
+{resume_text}
+
+Job description:
+{job_description}
