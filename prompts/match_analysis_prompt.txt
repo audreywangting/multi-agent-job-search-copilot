@@ -1,7 +1,9 @@
-Analyze the resume against the job description.
+Analyze the retrieved resume evidence against the job description.
+
+Use only the retrieved resume evidence below. Do not assume skills or experience not present in the retrieved evidence.
 
 Return only valid JSON with this exact shape:
-{
+{{
   "match_score": 0,
   "recommendation": "Strong Apply",
   "matched_skills": [],
@@ -9,7 +11,7 @@ Return only valid JSON with this exact shape:
   "missing_skills": [],
   "resume_improvements": [],
   "reasoning_summary": ""
-}
+}}
 
 Scoring guidance:
 - 90-100: excellent fit with clear evidence for most important requirements.
@@ -25,13 +27,14 @@ Recommendation guidance:
 - Skip: score below 35.
 
 Rules:
-- Do not invent experience that is not supported by the resume.
+- Do not invent experience that is not supported by the retrieved evidence.
+- If the retrieved evidence is thin, say so in the reasoning summary.
 - Keep the reasoning summary short.
 - Keep lists concise and practical.
 - Suggested resume improvements should be actionable edits the candidate could make if true.
 
-Resume:
-{resume_text}
+Retrieved resume evidence:
+{retrieved_resume_evidence}
 
 Job description:
 {job_description}
