@@ -1,112 +1,219 @@
 # Multi-Agent Job Search Copilot
 
-A 3-day side project MVP for a future LangGraph-based multi-agent job search assistant. The Day 2 version is a Streamlit app that compares a resume PDF with a pasted internship job description using a small RAG pipeline.
+An AI-powered job search assistant that evaluates resume-job fit using retrieval-augmented generation (RAG), semantic resume retrieval, and structured LLM analysis.
 
-Instead of sending the entire resume to the chat model, the app chunks the resume, embeds the chunks, retrieves the most relevant sections for the job description, and sends only those Top-K sections to the model for analysis.
+The system extracts resume content from uploaded PDFs, retrieves the most relevant resume evidence for a given job description, and generates structured skill-gap analysis, match recommendations, and resume improvement suggestions.
 
-## MVP Features
+## Architecture
 
-- Upload a resume PDF.
-- Extract resume text with `pypdf`.
-- Chunk the resume with simple character-based chunking.
-- Embed resume chunks with `text-embedding-3-small`.
-- Retrieve Top-K resume chunks with cosine similarity.
-- Paste a job description.
-- Analyze resume-job fit from retrieved evidence only.
-- Display:
-  - match score
-  - recommendation: Strong Apply / Apply / Low Priority / Skip
-  - matched skills
-  - partial matches
-  - missing skills
-  - suggested resume improvements
-  - short reasoning summary
-  - retrieved resume evidence with chunk IDs and similarity scores
-- Mock/demo mode that uses local keyword-overlap retrieval on the uploaded resume without any OpenAI API call.
-- Real API mode that uses OpenAI embeddings and semantic similarity only when mock mode is disabled and the `Analyze` button is clicked.
+```text
+Resume PDF
+    ↓
+Text Extraction
+    ↓
+Chunking
+    ↓
+Embeddings
+    ↓
+Vector Similarity Search
+    ↓
+Top-K Evidence Retrieval
+    ↓
+LLM Analysis
+    ↓
+Structured Recommendation Report
+```
 
-## How Day 2 RAG Works
+## Features
+
+* Upload and analyze resume PDFs
+* Retrieval-Augmented Generation (RAG) pipeline
+* Semantic resume retrieval using OpenAI embeddings
+* Configurable Top-K evidence selection
+* Structured job-fit analysis
+* Skill-gap identification
+* Resume improvement recommendations
+* Mock mode for local testing without API usage
+* Real API mode for semantic retrieval and LLM reasoning
+* Structured JSON output for downstream automation
+
+## Example Output
+
+The application generates:
+
+* Match Score
+* Recommendation (Strong Apply / Apply / Low Priority / Skip)
+* Matched Skills
+* Partial Matches
+* Missing Skills
+* Suggested Resume Improvements
+* Reasoning Summary
+* Retrieved Resume Evidence with similarity scores
+
+## Technical Implementation
+
+### Resume Extraction
+
+Uploaded PDF resumes are parsed using `pypdf` and converted into raw text for downstream processing.
 
 ### Resume Chunking
 
-The app splits extracted resume text into overlapping character-based chunks. This keeps the implementation simple and avoids adding heavier frameworks before they are needed.
+The extracted resume text is split into overlapping chunks to improve retrieval quality while maintaining manageable context windows.
 
-Default chunk settings:
+Default settings:
 
-- chunk size: 900 characters
-- overlap: 150 characters
+* Chunk Size: 900 characters
+* Overlap: 150 characters
 
 ### Embeddings
 
-In real API mode, each resume chunk is embedded with `text-embedding-3-small`. The app stores the embedded resume chunks in Streamlit session state so repeated analyses in the same session can reuse the resume embeddings when the resume has not changed.
+In Real API Mode, resume chunks are embedded using:
 
-### Top-K Retrieval
+```text
+text-embedding-3-small
+```
 
-In mock mode, when you click `Analyze`, the app lowercases the job description and each resume chunk, counts overlap of important words, and returns the Top-K actual resume chunks by keyword-overlap score. This is local-only and does not call OpenAI.
+Embeddings are cached in Streamlit session state to avoid unnecessary recomputation when the uploaded resume remains unchanged.
 
-In real API mode, when you click `Analyze`, the app embeds the job description, compares it with each embedded resume chunk using cosine similarity, and returns the Top-K chunks by semantic similarity. The Top-K value is configurable in the sidebar from 3 to 8, with a default of 5.
+### Semantic Retrieval
 
-Only the retrieved chunks and the job description are sent to the chat model.
+When a job description is submitted:
 
-## Cost Warning
+1. The job description is embedded.
+2. Cosine similarity is computed against all resume chunk embeddings.
+3. The Top-K most relevant chunks are retrieved.
+4. Only the retrieved evidence is passed to the language model.
 
-Real API mode may incur OpenAI API costs because it uses both embeddings and chat completion. Mock mode is enabled by default and does not call the OpenAI API.
+This approach reduces irrelevant context and improves analysis quality.
 
-This app does not use background jobs, scheduled calls, scraping, loops, or automatic repeated API calls. OpenAI API calls happen only when mock mode is disabled and you click `Analyze`.
+### Structured LLM Analysis
+
+Retrieved resume evidence and the target job description are provided to `gpt-4o-mini`.
+
+The model returns structured JSON containing:
+
+```json
+{
+  "match_score": 85,
+  "recommendation": "Strong Apply",
+  "matched_skills": [],
+  "partial_matches": [],
+  "missing_skills": [],
+  "resume_improvements": [],
+  "reasoning_summary": ""
+}
+```
+
+The analysis is constrained to retrieved evidence only to reduce unsupported conclusions.
+
+## Retrieval Pipeline
+
+```text
+Resume
+    ↓
+Chunking
+    ↓
+Embedding Generation
+    ↓
+Vector Similarity Search
+    ↓
+Top-K Evidence
+    ↓
+LLM Analysis
+```
+
+## Mock Mode
+
+Mock Mode is enabled by default.
+
+In Mock Mode:
+
+* No OpenAI API calls are made
+* Resume extraction and chunking still occur
+* Retrieval uses local keyword-overlap scoring
+* Results are generated without external API usage
+
+This mode is useful for local development and testing.
+
+## Real API Mode
+
+In Real API Mode:
+
+* Resume chunks are embedded with OpenAI embeddings
+* Semantic similarity retrieval is performed
+* Retrieved evidence is analyzed using `gpt-4o-mini`
+
+OpenAI API calls occur only when:
+
+1. Mock Mode is disabled
+2. The user clicks Analyze
+
+## Cost Considerations
+
+Real API Mode may incur OpenAI API costs because it uses:
+
+* Embedding generation
+* Chat completion
+
+The application avoids unnecessary API usage by:
+
+* Caching embeddings within a session
+* Limiting context to retrieved evidence
+* Only executing analysis on user request
 
 ## API Key Safety
 
-Do not hardcode, print, log, commit, or share your OpenAI API key. This project reads the key from an environment variable only.
+API keys are loaded exclusively through environment variables.
 
-The `.env` file is ignored by git. Use `.env.example` as a template.
+The application:
 
-## Setup
+* Does not hardcode API keys
+* Does not commit API keys
+* Does not expose API keys in logs
+* Ignores `.env` through Git
+
+Example:
+
+```env
+OPENAI_API_KEY=your_api_key
+OPENAI_EMBEDDING_MODEL=text-embedding-3-small
+```
+
+## Installation
+
+Create a virtual environment:
 
 ```bash
-cd job-search-copilot
 python -m venv .venv
 source .venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
 ```
 
-If your shell uses `python3` instead of `python`, run:
-
-```bash
-python3 -m venv .venv
-```
-
-## Create `.env`
-
-Copy the example file:
+Create an environment file:
 
 ```bash
 cp .env.example .env
 ```
 
-Then edit `.env`:
+Configure:
 
-```bash
-OPENAI_API_KEY=your_real_api_key_here
+```env
+OPENAI_API_KEY=your_api_key
 OPENAI_EMBEDDING_MODEL=text-embedding-3-small
 ```
 
-You can skip this step if you only want to use mock mode.
-
-If your OpenAI project does not have access to the configured embedding model, real mode will show the exact OpenAI error message. Mock mode still works without any OpenAI API access.
-
-## Run Streamlit
+## Run the Application
 
 ```bash
 streamlit run app.py
 ```
 
-Open the local URL Streamlit prints in your terminal.
-
-## Mock Mode
-
-Mock mode is enabled by default in the sidebar. In mock mode, the app extracts and chunks the uploaded resume normally, retrieves actual resume chunks with local keyword-overlap scoring, and generates a simple keyword-based analysis from the job description plus retrieved evidence. It does not call the OpenAI API.
-
-To use the real API, turn off `Mock mode` in the sidebar, make sure `OPENAI_API_KEY` is set, upload a resume PDF, paste a job description, choose Top-K, and click `Analyze`.
+Open the local Streamlit URL shown in the terminal.
 
 ## Project Structure
 
@@ -118,20 +225,23 @@ job-search-copilot/
 │   ├── chunker.py
 │   ├── embeddings.py
 │   └── retriever.py
+├── prompts/
+│   └── match_analysis_prompt.txt
 ├── requirements.txt
 ├── README.md
-├── .gitignore
 ├── .env.example
-└── prompts/
-    └── match_analysis_prompt.txt
+└── .gitignore
 ```
 
-## Next Step
+## Future Enhancements
 
-Day 3:
-- Build a LangGraph multi-agent workflow.
-- Add a JD parser agent.
-- Add a resume retrieval agent.
-- Add a skill gap agent.
-- Add a recommendation agent.
-- Add telemetry for debugging, tracing, and evaluation.
+* LangGraph-based multi-agent orchestration
+* Dedicated Job Description Parsing Agent
+* Resume Retrieval Agent
+* Skill Gap Analysis Agent
+* Recommendation Generation Agent
+* Telemetry and evaluation dashboard
+* Retrieval quality benchmarking
+* Agent execution tracing
+* Resume version comparison
+* Application prioritization across multiple job postings
